@@ -13,7 +13,8 @@
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" HorizontalAlignment="Center">
             <TextBlock Text="Digite o endereço: " />
-            <TextBox Text="{Binding Address}" />
+            <TextBox Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}" />
+            <ComboBox SelectedItem="{Binding NumberOfStreams}" ItemsSource="{Binding NumberOfStreamOptions}" />
             <Button Content="Iniciar" Command="{Binding StartCommand}" />
             <Button Content="Parar" Command="{Binding StopCommand}" />
         </StackPanel>

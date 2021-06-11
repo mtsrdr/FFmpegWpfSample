@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows.Media.Imaging;
 using MvvmHelpers;
 using MvvmHelpers.Commands;
@@ -32,6 +33,7 @@ namespace FFmpegWpfSample
         public EventHandler CamerasStopped { get; set; }
         public Dictionary<string, VideoStreamDecoder> Decoders { get; }
         public Dictionary<string, RealPlayModel> RealPlayModels { get; }
+        public ObservableRangeCollection<int> NumberOfStreamOptions { get; }
         public Command StartCommand { get; }
         public Command StopCommand { get; }
 
@@ -39,22 +41,41 @@ namespace FFmpegWpfSample
         public string Address
         {
             get => _address;
-            set => _ = SetProperty(ref _address, value);
+            set => _ = SetProperty(ref _address, value, onChanged: StartCommand.RaiseCanExecuteChanged);
+        }
+
+        private int? _numberOfStreams;
+        public int? NumberOfStreams
+        {
+            get => _numberOfStreams;
+            set => _ = SetProperty(ref _numberOfStreams, value, onChanged: StartCommand.RaiseCanExecuteChanged);
+        }
+
+        private bool _isRunning;
+        public bool IsRunning 
+        {
+            get => _isRunning;
+            set => _ = SetProperty(ref _isRunning, value, onChanged: () => 
+            {
+                StartCommand.RaiseCanExecuteChanged();
+                StopCommand.RaiseCanExecuteChanged();
+            });
         }
 
         public MainViewModel()
         {
             Decoders = new Dictionary<string, VideoStreamDecoder>();
             RealPlayModels = new Dictionary<string, RealPlayModel>();
-            StartCommand = new Command(Start);
-            StopCommand = new Command(Stop);
+            NumberOfStreamOptions = new ObservableRangeCollection<int>(Enumerable.Range(1, 32));
+            StartCommand = new Command(Start, (_) => !IsRunning && !string.IsNullOrEmpty(Address) && NumberOfStreams.HasValue);
+            StopCommand = new Command(Stop, (_) => IsRunning);
         }
 
         private void Start(object obj)
         {
             Stop(null);
 
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < _numberOfStreams; i++)
             {
                 string referenceId = Guid.NewGuid().ToString(); 
                 VideoStreamDecoder decoder = new VideoStreamDecoder();
@@ -71,6 +92,7 @@ namespace FFmpegWpfSample
             }
 
             CamerasStarted?.Invoke(this, EventArgs.Empty);
+            IsRunning = true;
         }
 
         private void Stop(object obj)
@@ -85,6 +107,7 @@ namespace FFmpegWpfSample
             RealPlayModels.Clear();
             Decoders.Clear();
             CamerasStopped?.Invoke(this, EventArgs.Empty);
+            IsRunning = false;
         }
 
         private void OnNewFrame(object sender, BitmapSource bitmap)

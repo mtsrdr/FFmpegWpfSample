@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace FFmpegWpfSample
 {
@@ -53,22 +54,37 @@ namespace FFmpegWpfSample
 
                 for (int column = 0; column < columnsCount; column++)
                 {
-                    Image cameraControl = new Image();
-                    cameraControl.Margin = new Thickness(6);
+                    Image imageCam = new Image();
+                    Grid cell = new Grid() 
+                    { 
+                        Background = Brushes.DarkRed, 
+                        Margin = new Thickness(8) 
+                    };
+                    TextBlock txtMessage = new TextBlock() 
+                    { 
+                        FontSize = 22.0,
+                        Foreground = Brushes.White, 
+                        HorizontalAlignment = HorizontalAlignment.Center, 
+                        VerticalAlignment = VerticalAlignment.Center 
+                    };
 
-                    Grid.SetRow(cameraControl, nextRow);
-                    Grid.SetColumn(cameraControl, nextColumn);
-                    CamerasLayout.Children.Add(cameraControl);
+                    imageCam.Margin = new Thickness(6);
+                    cell.Children.Add(imageCam);
+                    cell.Children.Add(txtMessage);
+
+                    Grid.SetRow(cell, nextRow);
+                    Grid.SetColumn(cell, nextColumn);
+                    CamerasLayout.Children.Add(cell);
                     cameraControlsCount++;
 
                     if (cameraControlsCount <= realPlaysCount)
                     {
                         int realPlayIndex = cameraControlsCount - 1;
                         RealPlayModel realPlay = realPlayModels[realPlayIndex];
-                        cameraControl.DataContext = realPlay;
+                        cell.DataContext = realPlay;
 
-                        cameraControl.SetBinding(Image.SourceProperty, nameof(realPlay.CurrentFrame));
-                        //cameraControl.SetBinding(CameraControl.ErrorMessageProperty, nameof(realPlay.ErrorMessage));
+                        imageCam.SetBinding(Image.SourceProperty, nameof(realPlay.CurrentFrame));
+                        txtMessage.SetBinding(TextBlock.TextProperty, nameof(realPlay.ErrorMessage));
                     }
 
                     if (nextColumn < (columnsCount - 1))
