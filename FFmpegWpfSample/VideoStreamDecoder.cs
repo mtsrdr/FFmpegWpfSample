@@ -130,7 +130,7 @@ namespace FFmpegWpfSample
                         return response;
 
                     response = ffmpeg.avcodec_receive_frame(av_codec_ctx, av_frame);
-                    if (response == ffmpeg.AVERROR(ffmpeg.EAGAIN) || response == ffmpeg.AVERROR(ffmpeg.AVERROR_EOF))
+                    if (response == ffmpeg.EAGAIN || response == ffmpeg.AVERROR_EOF)
                         continue;
                     else if (response < 0)
                         return response;
