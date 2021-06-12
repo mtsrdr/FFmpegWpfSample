@@ -155,11 +155,12 @@ namespace FFmpegWpfSample
         private AVFrame ConvertFrameToRGB(AVFrame* source_frame, AVCodecContext* av_codec_ctx)
         {
             AVPixelFormat destinationPxtFormat = AVPixelFormat.AV_PIX_FMT_BGRA;
-            int width = source_frame->width;
-            int height = source_frame->height;
-
+            int srcWidth = source_frame->width;
+            int srcHeight = source_frame->height;
+            int destWidth = srcWidth >= 1280 ? 640 : srcWidth;
+            int destHeight = srcHeight >= 720 ? 480 : srcHeight;
             Marshal.FreeHGlobal(_convertedFrameBufferPtr);
-            _convertedFrameBufferSize = ffmpeg.av_image_get_buffer_size(destinationPxtFormat, width, height, 1);
+            _convertedFrameBufferSize = ffmpeg.av_image_get_buffer_size(destinationPxtFormat, destWidth, destHeight, 1);
             _convertedFrameBufferPtr = Marshal.AllocHGlobal(_convertedFrameBufferSize);
 
             byte_ptrArray4 _dstData = new byte_ptrArray4();
@@ -167,11 +168,12 @@ namespace FFmpegWpfSample
 
             if (_sws_scaler_ctx == null)
             {
-                _sws_scaler_ctx = ffmpeg.sws_getContext(width,
-                    height,
+                _sws_scaler_ctx = ffmpeg.sws_getContext(
+                    srcWidth,
+                    srcHeight,
                     av_codec_ctx->pix_fmt,
-                    width,
-                    height,
+                    destWidth,
+                    destHeight,
                     destinationPxtFormat,
                     ffmpeg.SWS_FAST_BILINEAR,
                     null,
@@ -179,19 +181,21 @@ namespace FFmpegWpfSample
                     null);
             }
 
-            ffmpeg.av_image_fill_arrays(ref _dstData,
+            _ = ffmpeg.av_image_fill_arrays(
+                ref _dstData,
                 ref _dstLinesize,
                 (byte*)_convertedFrameBufferPtr,
                 destinationPxtFormat,
-                width,
-                height,
+                destWidth,
+                destHeight,
                 1);
 
-            ffmpeg.sws_scale(_sws_scaler_ctx,
+            _ = ffmpeg.sws_scale(
+                _sws_scaler_ctx,
                 source_frame->data,
                 source_frame->linesize,
                 0,
-                height,
+                srcHeight,
                 _dstData,
                 _dstLinesize);
 
@@ -204,9 +208,10 @@ namespace FFmpegWpfSample
             {
                 data = data,
                 linesize = linesize,
-                width = width,
-                height = height,
+                width = destWidth,
+                height = destHeight
             };
+
             return convertedFrame;
         }
 
