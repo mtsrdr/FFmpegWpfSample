@@ -54,7 +54,10 @@ namespace FFmpegWpfSample
 
                 for (int column = 0; column < columnsCount; column++)
                 {
-                    Image imageCam = new Image();
+                    Image imageCam = new Image()
+                    {
+                        Stretch = Stretch.Fill
+                    };
                     Grid cell = new Grid() 
                     { 
                         Background = Brushes.DarkRed, 
