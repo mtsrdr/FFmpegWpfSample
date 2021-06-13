@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
@@ -8,7 +7,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using FFmpeg.AutoGen;
-using SixLabors.ImageSharp;
 
 namespace FFmpegWpfSample
 {
@@ -74,14 +72,17 @@ namespace FFmpegWpfSample
             AVPacket* av_packet = ffmpeg.av_packet_alloc();
             AVFrame* av_frame = ffmpeg.av_frame_alloc();
             AVCodecContext* av_codec_ctx;
+            AVDictionary* av_dict;
 
             try
             {
+                ffmpeg.av_dict_set(&av_dict, "rtsp_transport", "tcp", 0);
+
                 response = ffmpeg.avformat_network_init();
                 if (response < 0)
                     return response;
 
-                response = ffmpeg.avformat_open_input(&av_format_ctx, _source, null, null);
+                response = ffmpeg.avformat_open_input(&av_format_ctx, _source, null, &av_dict);
                 if (response < 0)
                     return response;
 
@@ -137,12 +138,12 @@ namespace FFmpegWpfSample
 
                     AVFrame convertedFrame = ConvertFrameToRGB(av_frame, av_codec_ctx);
                     BitmapSource bmp = ConvertToBitmapSource(convertedFrame);
-                    //BitmapSource bmp = ConvertWithImageSharp(convertedFrame);
                     _dispacher.Invoke(() => OnNewFrame?.Invoke(this, bmp));
                 }
             }
             finally
             {
+                ffmpeg.av_dict_free(&av_dict);
                 ffmpeg.avformat_free_context(av_format_ctx);
                 ffmpeg.av_frame_free(&av_frame);
                 ffmpeg.av_packet_free(&av_packet);
@@ -215,25 +216,6 @@ namespace FFmpegWpfSample
             return convertedFrame;
         }
 
-        //private static BmpEncoder _bmpEncoder = new BmpEncoder(); // Can be passed as an argument to SaveAsBmp
-        private BitmapImage ConvertWithImageSharp(AVFrame avFrame)
-        {
-            byte[] data = new byte[_convertedFrameBufferSize];
-            Marshal.Copy((IntPtr)avFrame.data[0], data, 0, _convertedFrameBufferSize);
-            Image<SixLabors.ImageSharp.PixelFormats.Bgra32> image = Image.LoadPixelData<SixLabors.ImageSharp.PixelFormats.Bgra32>(data, avFrame.width, avFrame.height);
-
-            var ms = new MemoryStream();
-            image.SaveAsBmp(ms);
-            ms.Position = 0;
-            
-            BitmapImage bmp = new BitmapImage();
-            bmp.BeginInit();
-            bmp.StreamSource = ms;
-            bmp.EndInit();
-            bmp.Freeze();
-            return bmp;
-        }
-
         private BitmapSource ConvertToBitmapSource(AVFrame avFrame)
         {
             int width = avFrame.width;
@@ -245,39 +227,6 @@ namespace FFmpegWpfSample
             WriteableBitmap wbm = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
             wbm.WritePixels(new Int32Rect(0, 0, width, height), (IntPtr)data[0], bufferSize, stride);
             wbm.Freeze();
-
-            /* Exemplo de como codificar o WriteableBitmap em uma Stream corretamente.
-            byte[] wbmBytes = wbm.ConvertToByteArray();
-            IBuffer buffer = wbmBytes.AsBuffer();
-            InMemoryRandomAccessStream ims = new InMemoryRandomAccessStream();
-            ims.WriteAsync(buffer).AsTask().GetAwaiter().GetResult();
-            ims.FlushAsync().AsTask().GetAwaiter().GetResult();
-            ims.Seek(0);
-
-            WinBitmapEncoder encoder = WinBitmapEncoder.CreateAsync(WinBitmapEncoder.PngEncoderId, ims).AsTask().GetAwaiter().GetResult();
-
-            encoder.SetPixelData(Windows.Graphics.Imaging.BitmapPixelFormat.Bgra8, Windows.Graphics.Imaging.BitmapAlphaMode.Ignore, (uint)wbm.PixelWidth, (uint)wbm.PixelHeight, 96.0, 96.0, wbmBytes);
-            encoder.FlushAsync().AsTask().GetAwaiter().GetResult();
-            
-            Stream streamResult = ims.AsStream();
-            MemoryStream ms = new MemoryStream();
-            streamResult.CopyTo(ms);
-            ms.Seek(0, SeekOrigin.Begin);
-
-            const string filePath = "output_bitmap.png";
-            if (File.Exists(filePath))
-                File.Delete(filePath);
-
-            FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-            byte[] bytes = ms.ToArray();
-            fs.Write(bytes, 0, bytes.Length);
-            fs.Flush();
-
-            streamResult.Dispose();
-            ms.Dispose();
-            fs.Dispose();
-            */
-
             return wbm;
         }
 
